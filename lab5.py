@@ -1,5 +1,3 @@
-# https://лови5.рф/upload/uf/09b/vraz7xspskir759cukwoqan1sedpcnt8/CHislennoe-reshenie.pdf
-# quadrature method for Volterra eq type 2
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -16,35 +14,41 @@ def exact(x):
     return np.cos(x) - 0.5 * x * np.sin(x)
 
 
-l = 1
+def get_integration_weights(size, method, h):
+    if method == 'rect':
+        weights = np.full(size, h) 
+    elif method == 'trap':
+        weights = np.ones(size) * h 
+        weights[0] = weights[-1] = h / 2 
+    elif method == 'simp':
+        weights = np.zeros(size)
+        weights[0] = weights[-1] = h / 3
+        weights[1:-1:2] = 4 * h / 3
+        weights[2:-2:2] = 2 * h / 3
+    else:
+        raise ValueError("Method must be 'rect', 'trap', or 'simp'.")
+
+    return weights
+
 
 a, b = 0, 3 * np.pi
-n = 10
-
+n = 100
 xs, h = np.linspace(a, b, n + 1, retstep=True)
 
-F = f(xs)
-w = l * np.ones(n + 1)
-w[0] = w[-1] = l / 2
+fs = f(xs)
 
-u = np.zeros(n + 1)
+for meth in ['rect', 'trap', 'simp']:
+    w = get_integration_weights(n + 1, meth, h)
 
-for i in range(n + 1):
-    print(f"\r{i}", end="")
-    Ki = lambda s: K(xs[i], s)
-    u[i] = (F[i] + sum((w * Ki(xs) * h * u))) / (1 - w[i] * Ki(xs[i]))
+    u = np.zeros(n + 1)
+    for i in range(n + 1):
+        u[i] = (fs[i] + sum(w * K(xs[i], xs) * u)) / (1 - w[i] * K(xs[i], xs[i]))
 
-e = exact(xs)
 
-plt.figure("Решение")
-plt.plot(xs, u)
-plt.plot(xs, e, "--")
-plt.legend(["Численное", "Точное"])
-plt.title(f"{n = }")
-plt.grid()
+    print(f'Максимальная ошибка ({meth}): {max(abs(u - exact(xs)))}')
 
-plt.figure("Модуль ошибки")
-plt.plot(xs, abs(u - e))
-plt.grid()
-
-plt.show()
+    plt.figure("Решение")
+    plt.plot(xs, u, label=f'Квадратуры ({meth})')
+    plt.plot(xs, exact(xs), "--", label='Точное')
+    plt.legend()
+    plt.show()
