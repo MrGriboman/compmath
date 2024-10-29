@@ -1,12 +1,11 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
 # Define parameters
 Lx, Ly = 1, 1  # Lengths in x and y directions
 Nx, Ny = 50, 50  # Number of grid points in x and y directions
 T = 1  # Total time
 Nt = 200  # Number of time steps
-alpha = 1  # Diffusion coefficient in the PDE
+alpha = 4  # Diffusion coefficient in the PDE
 
 dx = Lx / (Nx - 1)
 dy = Ly / (Ny - 1)
@@ -17,16 +16,16 @@ gamma_x = alpha * dt / dx**2
 gamma_y = alpha * dt / dy**2
 
 # Create the grid
-x = np.linspace(0, Lx, Nx)
+x = np.linspace(0, 1, Nx)
 y = np.linspace(0, Ly, Ny)
 t = np.linspace(0, T, Nt+1)
 
 # Initialize the solution grid
 u = np.zeros((Nt+1, Nx, Ny))
 
-# Define the source function
 def f(t, x, y):
     return (1 - 2 * t) * np.exp(x + y)
+
 
 # Thomas algorithm for solving tridiagonal systems
 def thomas_algorithm(a, b, c, d):
@@ -53,8 +52,6 @@ def thomas_algorithm(a, b, c, d):
 
 # Time-stepping loop
 for n in range(Nt):
-    current_time = t[n]
-    
     # Step 1: Half-step in the x-direction (implicit in x, explicit in y)
     u_half = np.zeros((Nx, Ny))
     for j in range(1, Ny-1):
@@ -62,11 +59,10 @@ for n in range(Nt):
         a = -0.5 * gamma_x * np.ones(Nx-1)
         b = (1 + gamma_x) * np.ones(Nx)
         c = -0.5 * gamma_x * np.ones(Nx-1)
-        d = u[n, :, j] + 0.5 * dt * f(current_time + 0.5 * dt, x, y[j])
+        d = u[n, :, j] + 0.5 * dt * f(t[n] + 0.5 * dt, x, y[j])
         
         # Apply Dirichlet boundary conditions in x
-        d[0] = current_time * np.exp(y[j])           # Left boundary at x = 0
-        d[-1] = current_time * np.exp(1 + y[j])      # Right boundary at x = 1
+        d[0], d[-1] = 0, 0
         u_half[:, j] = thomas_algorithm(a, b, c, d)
     
     # Step 2: Full step in the y-direction (implicit in y, explicit in x)
@@ -75,20 +71,20 @@ for n in range(Nt):
         a = -0.5 * gamma_y * np.ones(Ny-1)
         b = (1 + gamma_y) * np.ones(Ny)
         c = -0.5 * gamma_y * np.ones(Ny-1)
-        d = u_half[i, :] + 0.5 * dt * f(current_time + dt, x[i], y)
+        d = u_half[i, :] + 0.5 * dt * f(t[n] + dt, x[i], y)
         
-        # Apply Dirichlet boundary conditions in y
-        d[0] = current_time * np.exp(x[i])           # Bottom boundary at y = 0
-        d[-1] = current_time * np.exp(x[i] + 1)      # Top boundary at y = 1
+        # Apply Neumann boundary conditions in y
+        d[0] += 0.5 * gamma_y * u_half[i, 1]
+        d[-1] += 0.5 * gamma_y * u_half[i, -2]
         u[n+1, i, :] = thomas_algorithm(a, b, c, d)
     
-    # Update boundary conditions for the solution grid
-    u[n+1, 0, :] = current_time * np.exp(y)          # Left boundary in x
-    u[n+1, -1, :] = current_time * np.exp(1 + y)     # Right boundary in x
-    u[n+1, :, 0] = current_time * np.exp(x)          # Bottom boundary in y
-    u[n+1, :, -1] = current_time * np.exp(x + 1)     # Top boundary in y
+    # Boundary conditions for the solution grid
+    u[n+1, 0, :] = 0
+    u[n+1, -1, :] = 0
 
 # Example: Visualize the final temperature distribution
+import matplotlib.pyplot as plt
+
 X, Y = np.meshgrid(x, y, indexing="ij")
 plt.contourf(X, Y, u[-1].T, 20, cmap="hot")
 plt.colorbar(label="Temperature")
