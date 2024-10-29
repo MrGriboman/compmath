@@ -1,169 +1,95 @@
-# changing directions method for parabolic pde (heat eq)
 import numpy as np
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+
+from TDMA import TDMA
 
 
-def exact(x, y, t):
-    # return t * np.exp(x + y)
-    # return t * np.sin(np.pi * x) * np.sin(np.pi * y)
-    # return t + (y ** 2 + x ** 2)
-    return t + (y ** 2 + x ** 2) / 4
+def exact_sol(x, y, t):
+    return t * np.exp(x + y)
 
 
-def f(x, y, t):
-    # return (1 - 2 * t) * np.exp(x + y)
-    # return (1 + 2 * t * np.pi ** 2) * np.sin(np.pi * x) * np.sin(np.pi * y)
-    # return -3
-    return 0
+def f(t, x, y):
+    return (1 - 2 * t) * np.exp(x + y)
 
 
-def l(size):
-    lmat = -2 * np.identity(size + 1)
-    ones1 = np.ones(size + 1)
-    ones1[0] = ones1[-1] = 0
-    lmat += np.diag(ones1[1:], -1) + np.diag(ones1[:-1], 1)
-    # lmat[0, 0] = lmat[-1, -1] = 1
-    lmat[0, :3] = [1, -2, 1]
-    lmat[-1, -3:] = [1, -2, 1]
-    return lmat
+#def f(t, x, y):
+#    return np.exp(t) * (x**2 - 1) * np.cos(y)
 
 
-at, bt = 0, 1
-ax, bx = 0, 1
-ay, by = 0, 1
+# Define parameters
+Lx, Ly = 1, 1  # Lengths in x and y directions
+Nx, Ny = 50, 50  # Number of grid points in x and y directions
+T = 1  # Total time
+Nt = 200  # Number of time steps
+alpha = 1  # Diffusion coefficient in the PDE
 
-nt = 10
-nx = 20
-ny = 20
+# Create the grid
+x, dx = np.linspace(0, Lx, Nx, retstep=True)
+y, dy = np.linspace(0, Ly, Ny, retstep=True)
+t, dt = np.linspace(0, T, Nt+1, retstep=True)
 
-tl, ht = np.linspace(at, bt, nt + 1, retstep=True)
-xl, hx = np.linspace(ax, bx, nx + 1, retstep=True)
-yl, hy = np.linspace(ay, by, ny + 1, retstep=True)
+# Stability parameters
+gamma_x = alpha * dt / dx**2
+gamma_y = alpha * dt / dy**2
 
-u = np.zeros((nt + 1, ny + 1, nx + 1))
-
-xx, yy = np.meshgrid(xl, yl)
-
-u[0] = exact(*np.meshgrid(xl, yl), 0)
-
-for ti in range(1, nt + 1):
-    for yi in range(ny + 1):
-        for xi in [0, -1]:
-            u[ti, yi, xi] = exact(xl[xi], yl[yi], tl[ti])
-
-    for yi in [0, -1]:
-        for xi in range(nx + 1):
-            u[ti, yi, xi] = exact(xl[xi], yl[yi], tl[ti])
-
-l1 = -l(nx) / hx ** 2
-l2 = -l(ny) / hy ** 2
-
-print(l1)
-
-I1 = np.identity(len(l1))
-I2 = np.identity(len(l2))
-
-ms = [I2 + 2 * ht * l2,
-      I1 - 2 * ht * l1,
-      I1 + 2 * ht * l1,
-      I2 - 2 * ht * l2]
-
-# for mi in [1, 3]:
-#     ms[mi][0,0] = ms[mi][-1,-1] = 1
-
-for ti in range(1, nt + 1):
-    h_step = u[ti - 1].copy()
-    t1_2 = (tl[ti - 1] + tl[ti]) / 2
-    f1_2 = f(*np.meshgrid(xl, yl), t1_2)
-
-    for xi in range(nx + 1):
-        h_step[:, xi] = ms[0] @ h_step[:, xi]
-
-    h_step += f1_2 * 2 * ht
-
-    # for yi in range(ny + 1):
-    #     for xi in [0, -1]:
-    #         h_step[yi, xi] = exact(xl[xi], yl[yi], t1_2)
-    #
-    # for yi in [0, -1]:
-    #     for xi in range(nx + 1):
-    #         h_step[yi, xi] = exact(xl[xi], yl[yi], t1_2)
-
-    for yi in range(ny + 1):
-        h_step[yi] = np.linalg.solve(ms[1], h_step[yi])
+# Initialize the solution grid
+u = np.zeros((Nt+1, Nx, Ny))
 
 
-    for yi in range(ny + 1):
-        h_step[yi] = ms[2] @ h_step[yi]
-
-    h_step += f1_2 * 2 * ht
-
-    # for yi in range(ny + 1):
-    #     for xi in [0, -1]:
-    #         h_step[yi, xi] = exact(xl[xi], yl[yi], tl[ti])
-    #
-    # for yi in [0, -1]:
-    #     for xi in range(nx + 1):
-    #         h_step[yi, xi] = exact(xl[xi], yl[yi], tl[ti])
-
-    for xi in range(nx + 1):
-        h_step[:, xi] = np.linalg.solve(ms[3], h_step[:, xi])
-
-    u[ti] = h_step
-
-
-ue = u.copy()
-for ti in range(1, nt + 1):
-    ue[ti] = exact(xx, yy, tl[ti])
-
-from matplotlib.animation import FuncAnimation
-from matplotlib import cm
-
-xx, yy = np.meshgrid(xl, yl)
-zlim = [np.min([u, ue]) - 2 * ht, np.max([u, ue]) + 2 * ht]
-print(zlim)
-
-
-def plot3d(ax, solution, ti):
-    return ax.plot_surface(xx, yy, solution[ti],
-                           cmap=cm.plasma,
-                           linewidth=0,
-                           antialiased=False)
+# Time-stepping loop
+for n in range(Nt):
+    # Step 1: Half-step in the x-direction (implicit in x, explicit in y)
+    u_half = np.zeros((Nx, Ny))
+    for j in range(1, Ny-1):
+        # Construct the tridiagonal system
+        a = -0.5 * gamma_x * np.ones(Nx-1)
+        b = (1 + gamma_x) * np.ones(Nx)
+        c = -0.5 * gamma_x * np.ones(Nx-1)
+        d = u[n, :, j] + 0.5 * dt * f(t[n] + 0.5 * dt, x, y[j])
+        
+        # Apply Dirichlet boundary conditions in x
+        d[0] = t[n] * np.exp(0 + y[j])
+        d[-1] = t[n] * np.exp(1 + y[j])
+        u_half[:, j] = TDMA(a, b, c, d)
+    
+    # Step 2: Full step in the y-direction (implicit in y, explicit in x)
+    for i in range(1, Nx-1):
+        # Construct the tridiagonal system
+        a = -0.5 * gamma_y * np.ones(Ny-1)
+        b = (1 + gamma_y) * np.ones(Ny)
+        c = -0.5 * gamma_y * np.ones(Ny-1)
+        d = u_half[i, :] + 0.5 * dt * f(t[n] + dt, x[i], y)
+        
+        # Apply Neumann boundary conditions in y
+        d[0] += 0.5 * gamma_y * u_half[i, 1]
+        d[-1] += 0.5 * gamma_y * u_half[i, -2]
+        u[n+1, i, :] = TDMA(a, b, c, d)
+    
+    # Boundary conditions for the solution grid
+    u[n+1, 0, :] = 0
+    u[n+1, -1, :] = 0
 
 
-fig, ax = plt.subplots(1, 2, subplot_kw={"projection": "3d"})
 
 
-def update(ti):
-    ax[0].clear()
-    ax[1].clear()
-    fig.suptitle(f"t = {np.round(tl[ti], 2)}")
-    ax[0].set_title("Численное")
-    ax[1].set_title("Точное")
-    ax[0].axes.set_zlim3d(bottom=zlim[0], top=zlim[1])
-    ax[1].axes.set_zlim3d(bottom=zlim[0], top=zlim[1])
-    plot3d(ax[0], u, ti)
-    plot3d(ax[1], ue, ti)
-    return
+# Create a meshgrid for x and y
+X, Y = np.meshgrid(x, y, indexing="ij")
+Z = u[-5]  # Use the temperature distribution at the final time step
 
+# Create a 3D surface plot with Plotly
+fig = go.Figure(data=[go.Surface(z=Z, x=X, y=Y, colorscale="Hot")])
 
-update(0)
+# Update layout for readability
+fig.update_layout(
+    title="Temperature Distribution at Final Time",
+    scene=dict(
+        xaxis_title="x",
+        yaxis_title="y",
+        zaxis_title="Temperature"
+    ),
+    coloraxis_colorbar=dict(title="Temperature")
+)
 
-frames, interval = range(nt + 1), 1000 * (bt - at) / nt
-print(f"ms: {interval}")
-
-ani = FuncAnimation(fig,
-                    update,
-                    frames=frames,
-                    blit=False,
-                    interval=interval)
-
-diff = np.zeros(nt + 1)
-for ti in range(nt + 1):
-    diff[ti] = np.max(abs(u[ti] - ue[ti]))
-# print(diff)
-
-plt.figure("Модуль разности")
-plt.plot(tl, diff)
-
-plt.show()
+# Show plot
+fig.show()

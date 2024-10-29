@@ -32,9 +32,8 @@ def get_integration_weights(size, method, h):
 
 
 a, b = 0, 3 * np.pi
-n = 100
+n = 101
 xs, h = np.linspace(a, b, n + 1, retstep=True)
-
 fs = f(xs)
 
 for meth in ['rect', 'trap', 'simp']:
