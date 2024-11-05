@@ -3,15 +3,20 @@ import matplotlib.pyplot as plt
 
 
 def K(x, s):
-    return np.sin(0.6 * x * s)
+    return np.sin(0.6 * x * s) / (s + 1e10)
+    return np.sin(s - x)
+    #return np.exp(x - s)
 
 
 def f(x):
     return x
+    return np.cos(x) + 0.125 * x**2 * np.cos(x) - 0.125 * x * np.sin(x)
+    #return np.exp(x)
 
 
 def exact(x):
-    return x
+    return np.cos(x) - 0.5 * x * np.sin(x)
+    #return np.exp(2*x)
 
 
 def get_integration_weights(size, method, h):
@@ -31,8 +36,8 @@ def get_integration_weights(size, method, h):
     return weights
 
 
-a, b = 0, 3 * np.pi
-n = 101
+a, b = 0, 1
+n = 100
 xs, h = np.linspace(a, b, n + 1, retstep=True)
 fs = f(xs)
 
@@ -44,10 +49,11 @@ for meth in ['rect', 'trap', 'simp']:
         u[i] = (fs[i] + sum(w * K(xs[i], xs) * u)) / (1 - w[i] * K(xs[i], xs[i]))
 
 
-    #print(f'Максимальная ошибка ({meth}): {max(abs(u - exact(xs)))}')
+    print(f'Максимальная ошибка ({meth}): {max(abs(u - exact(xs)))}')
 
     plt.figure("Решение")
     plt.plot(xs, u, label=f'Квадратуры ({meth})')
     #plt.plot(xs, exact(xs), "--", label='Точное')
+    plt.grid(True)
     plt.legend()
     plt.show()

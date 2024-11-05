@@ -32,10 +32,10 @@ def l_oper(size):
     return mat
 
 
-t_start, t_end = 0, 1
+t_start, t_end = 0.001, 0.1
 x_start, x_end = 0, 1
 y_start, y_end = 0, 1
-n_t, n_x, n_y = 10, 2, 2
+n_t, n_x, n_y = 30, 10, 10
 t_vals, dt = np.linspace(t_start, t_end, n_t + 1, retstep=True)
 x_vals, dx = np.linspace(x_start, x_end, n_x + 1, retstep=True)
 y_vals, dy = np.linspace(y_start, y_end, n_y + 1, retstep=True)
@@ -68,6 +68,11 @@ for t in range(1, n_t + 1, 2):
     h_step = np.array([step_mat(Lx, u[t + 1, idx_y]) for idx_y in range(n_y + 1)])
     np.copyto(u[t + 1], h_step)
 
+    u[t, :, 0] = exact_sol(x_vals, y_vals[0], t_vals[t])
+    u[t, :, -1] = exact_sol(x_vals, y_vals[-1], t_vals[t]) 
+    u[t, 0, :] = exact_sol(x_vals[0], y_vals, t_vals[t])
+    u[t, -1, :] = exact_sol(x_vals[-1], y_vals, t_vals[t])
+
 
 T_vals = t_vals[:, np.newaxis, np.newaxis]
 u_exact = T_vals * np.exp(X + Y)
@@ -84,7 +89,7 @@ def plot_surface(z):
 fig = sp.make_subplots(rows=1, cols=2, specs=[[{'type': 'surface'}, {'type': 'surface'}]],
                        subplot_titles=["Численное", "Точное"])
 
-for t in range(n_t + 1):
+for t in range(10):
     fig.add_trace(plot_surface(u[t]), row=1, col=1)
     fig.add_trace(plot_surface(u_exact[t]), row=1, col=2)
 

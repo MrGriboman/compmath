@@ -1,4 +1,5 @@
 from scipy.linalg import solve_banded
+import numpy as np
 
 def TDMA(matrix, rhs):
 

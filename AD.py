@@ -15,7 +15,7 @@ def f(x, y, t):
 
 a, b = 0, 1
 n = 10
-t_steps = 1001
+t_steps = 1000
 dx = (b - a) / (n - 1)
 dt = (b - a) / t_steps
 
@@ -96,6 +96,7 @@ X_mesh, Y_mesh = np.meshgrid(x_vals, y_vals)
 
 fig = make_subplots(rows=1, cols=2, specs=[[{'type': 'surface'}, {'type': 'surface'}]], 
                     subplot_titles=("Численное", "Точное"))
+
 
 fig.add_trace(go.Surface(z=u[-2], x=X_mesh, y=Y_mesh, colorscale='Jet', showscale=False), row=1, col=1)
 
